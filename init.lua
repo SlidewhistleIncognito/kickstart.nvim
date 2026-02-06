@@ -94,6 +94,7 @@ vim.g.maplocalleader = ' '
 -- Set to true if you have a Nerd Font installed and selected in the terminal
 vim.g.have_nerd_font = true
 
+vim.lsp.enable('pyright', false)
 -- [[ Setting options ]]
 -- See `:help vim.o`
 -- NOTE: You can change these options as you wish!
@@ -179,7 +180,7 @@ vim.o.foldmethod = 'expr'
 vim.o.foldexpr = 'v:lua.vim.treesitter.foldexpr()'
 vim.o.foldtext = ''
 vim.opt.foldcolumn = '0'
-vim.opt.fillchars:append { fold = ' ' }
+vim.opt.fillchars:append { fold = ' ', foldclose = '', foldopen = '', foldsep = ' ' }
 
 -- [[ Basic Keymaps ]]
 --  See `:help vim.keymap.set()`
@@ -650,6 +651,8 @@ require('lazy').setup({
                 end,
             })
 
+            vim.api.nvim_create_autocmd('LspDetach', { command = 'setl foldexpr<' })
+
             -- Diagnostic Config
             -- See :help vim.diagnostic.Opts
             vim.diagnostic.config {
@@ -664,9 +667,7 @@ require('lazy').setup({
                         [vim.diagnostic.severity.HINT] = '󰌶 ',
                     },
                 } or {},
-                virtual_text = {
-                    source = 'if_many',
-                    spacing = 2,
+                virtual_lines = {
                     format = function(diagnostic)
                         local diagnostic_message = {
                             [vim.diagnostic.severity.ERROR] = diagnostic.message,
@@ -677,6 +678,19 @@ require('lazy').setup({
                         return diagnostic_message[diagnostic.severity]
                     end,
                 },
+                -- virtual_text = {
+                --     source = 'if_many',
+                --     spacing = 2,
+                --     format = function(diagnostic)
+                --         local diagnostic_message = {
+                --             [vim.diagnostic.severity.ERROR] = diagnostic.message,
+                --             [vim.diagnostic.severity.WARN] = diagnostic.message,
+                --             [vim.diagnostic.severity.INFO] = diagnostic.message,
+                --             [vim.diagnostic.severity.HINT] = diagnostic.message,
+                --         }
+                --         return diagnostic_message[diagnostic.severity]
+                --     end,
+                -- },
             }
 
             -- LSP servers and clients are able to communicate to each other what features they support.
@@ -709,7 +723,8 @@ require('lazy').setup({
                 --
                 ts_ls = {},
                 prismals = {},
-                pyright = {},
+                ty = {},
+                ruff = {},
                 yamlls = {
                     settings = {
                         redhat = {
@@ -770,6 +785,7 @@ require('lazy').setup({
                         server.capabilities = vim.tbl_deep_extend('force', {}, capabilities, server.capabilities or {})
                         require('lspconfig')[server_name].setup(server)
                     end,
+                    ['pyright'] = function() end,
                 },
             }
         end,
@@ -819,7 +835,7 @@ require('lazy').setup({
             end,
             formatters_by_ft = {
                 lua = { 'stylua' },
-                python = { 'black' },
+                python = { 'ruff_format' },
                 json = { 'prettier' },
                 prisma = { 'prisma_fmt' },
                 javascript = { 'prettier' },
@@ -827,6 +843,7 @@ require('lazy').setup({
                 typescriptreact = { 'prettier' },
                 javascriptreact = { 'prettier' },
                 css = { 'prettier' },
+                sh = { 'shfmt' },
             },
             formatters = {
                 prisma_fmt = {
@@ -938,14 +955,23 @@ require('lazy').setup({
     },
 
     {
-        'loctvl842/monokai-pro.nvim',
-        lazy = false,
+        'ellisonleao/gruvbox.nvim',
         priority = 1000,
         config = function()
-            require('monokai-pro').setup()
-            vim.cmd.colorscheme 'monokai-pro'
+            require('gruvbox').setup()
+            vim.cmd.colorscheme 'gruvbox'
         end,
     },
+
+    -- {
+    --     'loctvl842/monokai-pro.nvim',
+    --     lazy = false,
+    --     priority = 1000,
+    --     config = function()
+    --         require('monokai-pro').setup()
+    --         vim.cmd.colorscheme 'monokai-pro'
+    --     end,
+    -- },
 
     -- Highlight todo, notes, etc in comments
     { 'folke/todo-comments.nvim', event = 'VimEnter', dependencies = { 'nvim-lua/plenary.nvim' }, opts = { signs = true } },
@@ -1014,6 +1040,8 @@ require('lazy').setup({
             -- set use_icons to true if you have a Nerd Font
             statusline.setup { use_icons = vim.g.have_nerd_font }
 
+            local set_hl = vim.api.nvim_set_hl
+            set_hl(0, 'MiniStatuslineFilename', { bg = '#84AF73', fg = '#000000' })
             -- You can configure sections in the statusline by overriding their
             -- default behavior. For example, here we set the section for
             -- cursor location to LINE:COLUMN
@@ -1080,6 +1108,148 @@ require('lazy').setup({
         --    - Treesitter + textobjects: https://github.com/nvim-treesitter/nvim-treesitter-textobjects
     },
 
+    -- {
+    --     'nvim-treesitter/nvim-treesitter-textobjects',
+    --     branch = 'main',
+    --     init = function()
+    --         -- Disable entire built-in ftplugin mappings to avoid conflicts.
+    --         -- See https://github.com/neovim/neovim/tree/master/runtime/ftplugin for built-in ftplugins.
+    --         vim.g.no_plugin_maps = true
+    --
+    --         -- Or, disable per filetype (add as you like)
+    --         -- vim.g.no_python_maps = true
+    --         -- vim.g.no_ruby_maps = true
+    --         -- vim.g.no_rust_maps = true
+    --         -- vim.g.no_go_maps = true
+    --     end,
+    --     config = function()
+    --         require('nvim-treesitter-textobjects').setup {
+    --             select = {
+    --                 -- Automatically jump forward to textobj, similar to targets.vim
+    --                 lookahead = true,
+    --                 -- You can choose the select mode (default is charwise 'v')
+    --                 --
+    --                 -- Can also be a function which gets passed a table with the keys
+    --                 -- * query_string: eg '@function.inner'
+    --                 -- * method: eg 'v' or 'o'
+    --                 -- and should return the mode ('v', 'V', or '<c-v>') or a table
+    --                 -- mapping query_strings to modes.
+    --                 selection_modes = {
+    --                     ['@parameter.outer'] = 'v', -- charwise
+    --                     ['@function.outer'] = 'V', -- linewise
+    --                     -- ['@class.outer'] = '<c-v>', -- blockwise
+    --                 },
+    --                 -- If you set this to `true` (default is `false`) then any textobject is
+    --                 -- extended to include preceding or succeeding whitespace. Succeeding
+    --                 -- whitespace has priority in order to act similarly to eg the built-in
+    --                 -- `ap`.
+    --                 --
+    --                 -- Can also be a function which gets passed a table with the keys
+    --                 -- * query_string: eg '@function.inner'
+    --                 -- * selection_mode: eg 'v'
+    --                 -- and should return true of false
+    --                 include_surrounding_whitespace = false,
+    --             },
+    --             move = {
+    --                 -- whether to set jumps in the jumplist
+    --                 set_jumps = true,
+    --             },
+    --         }
+    --
+    --         -- SELECT
+    --         vim.keymap.set({ 'x', 'o' }, 'am', function()
+    --             require('nvim-treesitter-textobjects.select').select_textobject('@function.outer', 'textobjects')
+    --         end)
+    --         vim.keymap.set({ 'x', 'o' }, 'im', function()
+    --             require('nvim-treesitter-textobjects.select').select_textobject('@function.inner', 'textobjects')
+    --         end)
+    --         vim.keymap.set({ 'x', 'o' }, 'ac', function()
+    --             require('nvim-treesitter-textobjects.select').select_textobject('@class.outer', 'textobjects')
+    --         end)
+    --         vim.keymap.set({ 'x', 'o' }, 'ic', function()
+    --             require('nvim-treesitter-textobjects.select').select_textobject('@class.inner', 'textobjects')
+    --         end)
+    --         -- You can also use captures from other query groups like `locals.scm`
+    --         vim.keymap.set({ 'x', 'o' }, 'as', function()
+    --             require('nvim-treesitter-textobjects.select').select_textobject('@local.scope', 'locals')
+    --         end)
+    --
+    --         -- SWAP
+    --         vim.keymap.set('n', '<leader>a', function()
+    --             require('nvim-treesitter-textobjects.swap').swap_next '@parameter.inner'
+    --         end)
+    --         vim.keymap.set('n', '<leader>A', function()
+    --             require('nvim-treesitter-textobjects.swap').swap_previous '@parameter.outer'
+    --         end)
+    --
+    --         -- MOVE
+    --         vim.keymap.set({ 'n', 'x', 'o' }, ']m', function()
+    --             require('nvim-treesitter-textobjects.move').goto_next_start('@function.outer', 'textobjects')
+    --         end)
+    --         -- vim.keymap.set({ 'n', 'x', 'o' }, ']]', function()
+    --         --     require('nvim-treesitter-textobjects.move').goto_next_start('@class.outer', 'textobjects')
+    --         -- end)
+    --         -- You can also pass a list to group multiple queries.
+    --         -- vim.keymap.set({ 'n', 'x', 'o' }, ']o', function()
+    --         --     require('nvim-treesitter-textobjects.move').goto_next_start({ '@loop.inner', '@loop.outer' }, 'textobjects')
+    --         -- end)
+    --         -- You can also use captures from other query groups like `locals.scm` or `folds.scm`
+    --         vim.keymap.set({ 'n', 'x', 'o' }, ']s', function()
+    --             require('nvim-treesitter-textobjects.move').goto_next_start('@local.scope', 'locals')
+    --         end)
+    --         -- vim.keymap.set({ 'n', 'x', 'o' }, ']z', function()
+    --         --     require('nvim-treesitter-textobjects.move').goto_next_start('@fold', 'folds')
+    --         -- end)
+    --
+    --         vim.keymap.set({ 'n', 'x', 'o' }, ']M', function()
+    --             require('nvim-treesitter-textobjects.move').goto_next_end('@function.outer', 'textobjects')
+    --         end)
+    --         -- vim.keymap.set({ 'n', 'x', 'o' }, '][', function()
+    --         --     require('nvim-treesitter-textobjects.move').goto_next_end('@class.outer', 'textobjects')
+    --         -- end)
+    --
+    --         vim.keymap.set({ 'n', 'x', 'o' }, '[m', function()
+    --             require('nvim-treesitter-textobjects.move').goto_previous_start('@function.outer', 'textobjects')
+    --         end)
+    --         -- vim.keymap.set({ 'n', 'x', 'o' }, '[[', function()
+    --         --     require('nvim-treesitter-textobjects.move').goto_previous_start('@class.outer', 'textobjects')
+    --         -- end)
+    --
+    --         vim.keymap.set({ 'n', 'x', 'o' }, '[M', function()
+    --             require('nvim-treesitter-textobjects.move').goto_previous_end('@function.outer', 'textobjects')
+    --         end)
+    --         -- vim.keymap.set({ 'n', 'x', 'o' }, '[]', function()
+    --         --     require('nvim-treesitter-textobjects.move').goto_previous_end('@class.outer', 'textobjects')
+    --         -- end)
+    --
+    --         -- Go to either the start or the end, whichever is closer.
+    --         -- Use if you want more granular movements
+    --         -- vim.keymap.set({ 'n', 'x', 'o' }, ']d', function()
+    --         --     require('nvim-treesitter-textobjects.move').goto_next('@conditional.outer', 'textobjects')
+    --         -- end)
+    --         -- vim.keymap.set({ 'n', 'x', 'o' }, '[d', function()
+    --         --     require('nvim-treesitter-textobjects.move').goto_previous('@conditional.outer', 'textobjects')
+    --         -- end)
+    --
+    --         local ts_repeat_move = require 'nvim-treesitter-textobjects.repeatable_move'
+    --
+    --         -- Repeat movement with ; and ,
+    --         -- ensure ; goes forward and , goes backward regardless of the last direction
+    --         vim.keymap.set({ 'n', 'x', 'o' }, ';', ts_repeat_move.repeat_last_move_next)
+    --         vim.keymap.set({ 'n', 'x', 'o' }, ',', ts_repeat_move.repeat_last_move_previous)
+    --
+    --         -- vim way: ; goes to the direction you were moving.
+    --         -- vim.keymap.set({ "n", "x", "o" }, ";", ts_repeat_move.repeat_last_move)
+    --         -- vim.keymap.set({ "n", "x", "o" }, ",", ts_repeat_move.repeat_last_move_opposite)
+    --
+    --         -- Optionally, make builtin f, F, t, T also repeatable with ; and ,
+    --         vim.keymap.set({ 'n', 'x', 'o' }, 'f', ts_repeat_move.builtin_f_expr, { expr = true })
+    --         vim.keymap.set({ 'n', 'x', 'o' }, 'F', ts_repeat_move.builtin_F_expr, { expr = true })
+    --         vim.keymap.set({ 'n', 'x', 'o' }, 't', ts_repeat_move.builtin_t_expr, { expr = true })
+    --         vim.keymap.set({ 'n', 'x', 'o' }, 'T', ts_repeat_move.builtin_T_expr, { expr = true })
+    --     end,
+    -- },
+
     -- The following comments only work if you have downloaded the kickstart repo, not just copy pasted the
     -- init.lua. If you want these files, they are in the repository, so you can just download them and
     -- place them in the correct locations.
@@ -1091,7 +1261,7 @@ require('lazy').setup({
     --
     -- require 'kickstart.plugins.debug',
     require 'kickstart.plugins.indent_line',
-    -- require 'kickstart.plugins.lint',
+    require 'kickstart.plugins.lint',
     require 'kickstart.plugins.autopairs',
     require 'kickstart.plugins.neo-tree',
     require 'kickstart.plugins.gitsigns', -- adds gitsigns recommend keymaps
