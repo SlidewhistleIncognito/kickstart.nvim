@@ -441,7 +441,7 @@ require('lazy').setup({
             vim.keymap.set('n', '<leader>sh', builtin.help_tags, { desc = '[S]earch [H]elp' })
             vim.keymap.set('n', '<leader>sk', builtin.keymaps, { desc = '[S]earch [K]eymaps' })
             vim.keymap.set('n', '<leader>sf', function()
-                builtin.find_files { hidden = true, no_ignore = true }
+                builtin.find_files { hidden = true }
             end, { desc = '[S]earch [F]iles' })
             vim.keymap.set('n', '<leader>ss', builtin.builtin, { desc = '[S]earch [S]elect Telescope' })
             vim.keymap.set('n', '<leader>sw', builtin.grep_string, { desc = '[S]earch current [W]ord' })
@@ -495,6 +495,19 @@ require('lazy').setup({
             },
         },
     },
+    require 'kickstart.plugins.neo-tree',
+    {
+        'antosha417/nvim-lsp-file-operations',
+        dependencies = {
+            'nvim-lua/plenary.nvim',
+            'nvim-neo-tree/neo-tree.nvim',
+        },
+        config = function()
+            require('lsp-file-operations').setup {
+                debug = true,
+            }
+        end,
+    },
     {
         -- Main LSP Configuration
         'neovim/nvim-lspconfig',
@@ -511,6 +524,7 @@ require('lazy').setup({
 
             -- Allows extra capabilities provided by blink.cmp
             'saghen/blink.cmp',
+            'antosha417/nvim-lsp-file-operations',
         },
         config = function()
             -- Brief aside: **What is LSP?**
@@ -697,7 +711,8 @@ require('lazy').setup({
             --  By default, Neovim doesn't support everything that is in the LSP specification.
             --  When you add blink.cmp, luasnip, etc. Neovim now has *more* capabilities.
             --  So, we create new capabilities with blink.cmp, and then broadcast that to the servers.
-            local capabilities = require('blink.cmp').get_lsp_capabilities()
+            local blink_capabilities = require('blink.cmp').get_lsp_capabilities()
+            local capabilities = vim.tbl_deep_extend('force', blink_capabilities, require('lsp-file-operations').default_capabilities())
 
             -- Enable the following language servers
             --  Feel free to add/remove any LSPs that you want here. They will automatically be installed.
@@ -836,14 +851,15 @@ require('lazy').setup({
             formatters_by_ft = {
                 lua = { 'stylua' },
                 python = { 'ruff_format' },
-                json = { 'prettier' },
+                json = { 'prettierd' },
                 prisma = { 'prisma_fmt' },
-                javascript = { 'prettier' },
-                typescript = { 'prettier' },
-                typescriptreact = { 'prettier' },
-                javascriptreact = { 'prettier' },
-                css = { 'prettier' },
+                javascript = { 'prettierd' },
+                typescript = { 'prettierd' },
+                typescriptreact = { 'prettierd' },
+                javascriptreact = { 'prettierd' },
+                css = { 'prettierd' },
                 sh = { 'shfmt' },
+                markdown = { 'prettierd' },
             },
             formatters = {
                 prisma_fmt = {
@@ -1263,7 +1279,6 @@ require('lazy').setup({
     require 'kickstart.plugins.indent_line',
     require 'kickstart.plugins.lint',
     require 'kickstart.plugins.autopairs',
-    require 'kickstart.plugins.neo-tree',
     require 'kickstart.plugins.gitsigns', -- adds gitsigns recommend keymaps
 
     -- NOTE: The import below can automatically add your own plugins, configuration, etc from `lua/custom/plugins/*.lua`
@@ -1299,4 +1314,4 @@ require('lazy').setup({
 })
 
 -- The line beneath this is called `modeline`. See `:help modeline`
--- vim: ts=2 sts=2 sw=2 et
+--- vim: ts=2 sts=2 sw=2 et
