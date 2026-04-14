@@ -91,9 +91,8 @@ vim.g.mapleader = ' '
 vim.g.maplocalleader = ' '
 
 -- Set to true if you have a Nerd Font installed and selected in the terminal
-vim.g.have_nerd_font = true
+vim.g.have_nerd_font = false
 
-vim.lsp.enable('pyright', false)
 -- [[ Setting options ]]
 -- See `:help vim.o`
 -- NOTE: You can change these options as you wish!
@@ -103,7 +102,7 @@ vim.lsp.enable('pyright', false)
 vim.o.number = true
 -- You can also add relative line numbers, to help with jumping.
 --  Experiment for yourself to see if you like it!
-vim.o.relativenumber = true
+-- vim.o.relativenumber = true
 
 -- Enable mouse mode, can be useful for resizing splits for example!
 vim.o.mouse = 'a'
@@ -142,11 +141,6 @@ vim.o.timeoutlen = 300
 vim.o.splitright = true
 vim.o.splitbelow = true
 
--- Configure tabs
-vim.o.tabstop = 4
-vim.o.shiftwidth = 4
-vim.o.expandtab = true
-
 -- Sets how neovim will display certain whitespace characters in the editor.
 --  See `:help 'list'`
 --  and `:help 'listchars'`
@@ -171,15 +165,6 @@ vim.o.scrolloff = 10
 -- instead raise a dialog asking if you wish to save the current file(s)
 -- See `:help 'confirm'`
 vim.o.confirm = true
-
--- Folding
-vim.o.foldenable = true
-vim.o.foldlevel = 99
-vim.o.foldmethod = 'expr'
-vim.o.foldexpr = 'v:lua.vim.treesitter.foldexpr()'
-vim.o.foldtext = ''
-vim.opt.foldcolumn = '0'
-vim.opt.fillchars:append { fold = ' ', foldclose = '', foldopen = '', foldsep = ' ' }
 
 -- [[ Basic Keymaps ]]
 --  See `:help vim.keymap.set()`
@@ -208,14 +193,6 @@ vim.keymap.set('n', '<C-l>', '<C-w><C-l>', { desc = 'Move focus to the right win
 vim.keymap.set('n', '<C-j>', '<C-w><C-j>', { desc = 'Move focus to the lower window' })
 vim.keymap.set('n', '<C-k>', '<C-w><C-k>', { desc = 'Move focus to the upper window' })
 
-vim.keymap.set('c', '<C-n>', function()
-    return vim.fn.wildmenumode() == 1 and '<C-n>' or '<Down>'
-end, { expr = true, noremap = true })
-
-vim.keymap.set('c', '<C-p>', function()
-    return vim.fn.wildmenumode() == 1 and '<C-p>' or '<Up>'
-end, { expr = true, noremap = true })
-
 -- [[ Basic Autocommands ]]
 --  See `:help lua-guide-autocommands`
 
@@ -229,6 +206,10 @@ vim.api.nvim_create_autocmd('TextYankPost', {
         vim.hl.on_yank()
     end,
 })
+
+-- [[ Custom options and keymaps — see lua/custom/ ]]
+require 'custom.options'
+require 'custom.keymaps'
 
 -- [[ Install `lazy.nvim` plugin manager ]]
 --    See `:help lazy.nvim.txt` or https://github.com/folke/lazy.nvim for more info
@@ -509,31 +490,7 @@ require('lazy').setup({
     },
 
     -- LSP Plugins
-    {
-        -- `lazydev` configures Lua LSP for your Neovim config, runtime and plugins
-        -- used for completion, annotations and signatures of Neovim apis
-        'folke/lazydev.nvim',
-        ft = 'lua',
-        opts = {
-            library = {
-                -- Load luvit types when the `vim.uv` word is found
-                { path = '${3rd}/luv/library', words = { 'vim%.uv' } },
-            },
-        },
-    },
     require 'kickstart.plugins.neo-tree',
-    {
-        'antosha417/nvim-lsp-file-operations',
-        dependencies = {
-            'nvim-lua/plenary.nvim',
-            'nvim-neo-tree/neo-tree.nvim',
-        },
-        config = function()
-            require('lsp-file-operations').setup {
-                debug = true,
-            }
-        end,
-    },
     {
         -- Main LSP Configuration
         'neovim/nvim-lspconfig',
@@ -790,18 +747,6 @@ require('lazy').setup({
         end,
     },
 
-    {
-        's1n7ax/nvim-window-picker',
-        name = 'window-picker',
-        event = 'VeryLazy',
-        version = '2.*',
-        config = function()
-            require('window-picker').setup {
-                hint = 'floating-letter',
-            }
-        end,
-    },
-
     { -- Autoformat
         'stevearc/conform.nvim',
         event = { 'BufWritePre' },
@@ -834,23 +779,8 @@ require('lazy').setup({
             end,
             formatters_by_ft = {
                 lua = { 'stylua' },
-                python = { 'ruff_format' },
-                json = { 'prettierd' },
-                prisma = { 'prisma_fmt' },
-                javascript = { 'prettierd' },
-                typescript = { 'prettierd' },
-                typescriptreact = { 'prettierd' },
-                javascriptreact = { 'prettierd' },
-                css = { 'prettierd' },
-                sh = { 'shfmt' },
-                markdown = { 'prettierd' },
-            },
-            formatters = {
-                prisma_fmt = {
-                    command = 'pnpm',
-                    args = { 'prisma', 'format', '--schema', '$FILENAME' },
-                    stdin = false,
-                },
+                -- Additional formatters live in lua/custom/plugins/conform-extra.lua
+                -- and are deep-merged in by lazy.nvim.
             },
         },
     },
@@ -954,66 +884,8 @@ require('lazy').setup({
         },
     },
 
-    {
-        'ellisonleao/gruvbox.nvim',
-        priority = 1000,
-        config = function()
-            require('gruvbox').setup()
-            vim.cmd.colorscheme 'gruvbox'
-        end,
-    },
-
-    -- {
-    --     'loctvl842/monokai-pro.nvim',
-    --     lazy = false,
-    --     priority = 1000,
-    --     config = function()
-    --         require('monokai-pro').setup()
-    --         vim.cmd.colorscheme 'monokai-pro'
-    --     end,
-    -- },
-
     -- Highlight todo, notes, etc in comments
     { 'folke/todo-comments.nvim', event = 'VimEnter', dependencies = { 'nvim-lua/plenary.nvim' }, opts = { signs = true } },
-
-    {
-        'mrjones2014/smart-splits.nvim',
-        tag = 'v2.0.5',
-        lazy = false,
-        config = function()
-            vim.keymap.set('n', '<A-h>', require('smart-splits').resize_left)
-            vim.keymap.set('n', '<A-j>', require('smart-splits').resize_down)
-            vim.keymap.set('n', '<A-k>', require('smart-splits').resize_up)
-            vim.keymap.set('n', '<A-l>', require('smart-splits').resize_right)
-            -- moving between splits
-            vim.keymap.set('n', '<C-h>', require('smart-splits').move_cursor_left)
-            vim.keymap.set('n', '<C-j>', require('smart-splits').move_cursor_down)
-            vim.keymap.set('n', '<C-k>', require('smart-splits').move_cursor_up)
-            vim.keymap.set('n', '<C-l>', require('smart-splits').move_cursor_right)
-            vim.keymap.set('n', '<C-\\>', require('smart-splits').move_cursor_previous)
-            -- swapping buffers between windows
-            vim.keymap.set('n', '<leader><leader>h', require('smart-splits').swap_buf_left)
-            vim.keymap.set('n', '<leader><leader>j', require('smart-splits').swap_buf_down)
-            vim.keymap.set('n', '<leader><leader>k', require('smart-splits').swap_buf_up)
-            vim.keymap.set('n', '<leader><leader>l', require('smart-splits').swap_buf_right)
-        end,
-    },
-
-    {
-        'NeogitOrg/neogit',
-        lazy = true,
-        dependencies = {
-            'nvim-lua/plenary.nvim', -- required
-            'sindrets/diffview.nvim', -- optional - Diff integration
-
-            -- Only one of these is needed.
-            'nvim-telescope/telescope.nvim', -- optional
-        },
-        cmd = 'Neogit',
-        keys = {
-            { '<leader>gg', '<cmd>Neogit<cr>', desc = 'Show Neogit UI' },
-        },
-    },
 
     { -- Collection of various small independent plugins/modules
         'nvim-mini/mini.nvim',
@@ -1262,7 +1134,7 @@ require('lazy').setup({
     --
     -- require 'kickstart.plugins.debug',
     require 'kickstart.plugins.indent_line',
-    require 'kickstart.plugins.lint',
+    -- require 'kickstart.plugins.lint',  -- replaced by lua/custom/plugins/lint.lua
     require 'kickstart.plugins.autopairs',
     require 'kickstart.plugins.gitsigns', -- adds gitsigns recommend keymaps
 
@@ -1270,7 +1142,7 @@ require('lazy').setup({
     --    This is the easiest way to modularize your config.
     --
     --  Uncomment the following line and add your plugins to `lua/custom/plugins/*.lua` to get going.
-    -- { import = 'custom.plugins' },
+    { import = 'custom.plugins' },
     --
     -- For additional information with loading, sourcing and examples see `:help lazy.nvim-🔌-plugin-spec`
     -- Or use telescope!
